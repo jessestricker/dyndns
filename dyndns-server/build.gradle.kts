@@ -14,6 +14,8 @@ dependencies {
     implementation(libs.ktor.server.core)
     implementation(libs.ktor.server.cio)
     implementation(libs.ktor.server.auth)
+    implementation(libs.ktor.server.callId)
+    implementation(libs.ktor.server.callLogging)
     implementation(libs.kaml)
     runtimeOnly(libs.logback.classic)
 

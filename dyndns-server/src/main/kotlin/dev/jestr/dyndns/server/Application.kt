@@ -11,12 +11,19 @@ import io.ktor.server.engine.addShutdownHook
 import io.ktor.server.engine.embeddedServer
 import io.ktor.server.plugins.BadRequestException
 import io.ktor.server.plugins.NotFoundException
+import io.ktor.server.plugins.callid.CallId
+import io.ktor.server.plugins.callid.callIdMdc
+import io.ktor.server.plugins.callid.generate
+import io.ktor.server.plugins.calllogging.CallLogging
 import io.ktor.server.response.respondText
 import io.ktor.server.routing.get
 import io.ktor.server.routing.routing
+import org.slf4j.event.Level
 import kotlin.io.path.Path
 
 private const val ENV_VAR_CONFIG = "DYNDNS_CONFIG"
+private const val CALL_ID_DICTIONARY = "0123456789abcdef"
+private const val CALL_ID_LENGTH = 16
 
 fun main() {
     val configFilePath = System.getenv(ENV_VAR_CONFIG)
@@ -33,6 +40,15 @@ fun main() {
 }
 
 fun Application.module(authService: AuthService, dynDnsService: DynDnsService) {
+    install(CallLogging) {
+        level = Level.DEBUG
+        callIdMdc()
+    }
+    install(CallId) {
+        verify(CALL_ID_DICTIONARY)
+        generate(CALL_ID_LENGTH, CALL_ID_DICTIONARY)
+    }
+
     install(Authentication) {
         basic("simple") { validate { credential -> authService.authenticate(credential) } }
     }
