@@ -1,0 +1,9 @@
+port: 8080
+auth:
+  username: "username"
+  password: "password"
+zones:
+  "example.org":
+    type: cloudflare
+    zoneId: "zoneId"
+    apiToken: "apiToken"

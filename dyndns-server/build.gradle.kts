@@ -1,7 +1,7 @@
 plugins {
     alias(libs.plugins.kotlin.jvm)
     alias(libs.plugins.kotlin.plugin.serialization)
-    alias(libs.plugins.ktor)
+    application
 }
 
 version = "0.1.0"
@@ -30,11 +30,16 @@ application { //
     mainClass = "dev.jestr.dyndns.server.ApplicationKt"
 }
 
-distributions.configureEach {
+distributions.main {
     contents {
         from("contrib") {
             into("etc")
             expand("version" to project.version)
         }
     }
+}
+
+tasks.named<JavaExec>("run") { //
+    environment("DYNDNS_CONFIG", "develop/config.yml")
+    jvmArgs("-Dlogback.configurationFile=develop/logback.xml")
 }
