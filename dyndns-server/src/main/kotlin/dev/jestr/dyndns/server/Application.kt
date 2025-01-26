@@ -7,6 +7,7 @@ import io.ktor.server.auth.Authentication
 import io.ktor.server.auth.authenticate
 import io.ktor.server.auth.basic
 import io.ktor.server.cio.CIO
+import io.ktor.server.engine.addShutdownHook
 import io.ktor.server.engine.embeddedServer
 import io.ktor.server.routing.get
 import io.ktor.server.routing.routing
@@ -20,13 +21,15 @@ fun main() {
     val configService = ConfigService(Path(configFilePath))
     val config = configService.config
 
-    embeddedServer(CIO, port = config.port, module = { module(config) }).start(wait = true)
-}
-
-fun Application.module(config: ConfigService.Config) {
     val authService = AuthService(config.auth)
     val dynDnsService = DynDnsService(config.zones)
 
+    embeddedServer(CIO, port = config.port, module = { module(authService, dynDnsService) })
+        .apply { addShutdownHook { dynDnsService.close() } }
+        .start(wait = true)
+}
+
+fun Application.module(authService: AuthService, dynDnsService: DynDnsService) {
     install(Authentication) {
         basic("simple") { validate { credential -> authService.authenticate(credential) } }
     }

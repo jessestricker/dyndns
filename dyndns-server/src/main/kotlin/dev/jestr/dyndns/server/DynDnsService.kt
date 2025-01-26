@@ -1,29 +1,25 @@
 package dev.jestr.dyndns.server
 
-import dev.jestr.dyndns.client.CloudflareDnsRecordClient
-import dev.jestr.dyndns.client.DnsRecordClient
+import dev.jestr.dyndns.client.DynDnsClient
 import dev.jestr.dyndns.client.UpdateDnsRecordRequest
-import dev.jestr.dyndns.client.ZoneName
-import io.ktor.server.plugins.BadRequestException
 import io.ktor.server.plugins.NotFoundException
 import org.slf4j.LoggerFactory
 
-typealias DynDnsServiceConfig = Map<ZoneName, DnsRecordClient.Config>
+typealias DynDnsServiceConfig = Map<String, DynDnsClient.Config>
 
-class DynDnsService(config: DynDnsServiceConfig) {
+class DynDnsService(config: DynDnsServiceConfig) : AutoCloseable {
     init {
         require(config.isNotEmpty()) { "zones must not be empty" }
         require(config.keys.all { it.isNotEmpty() }) { "zone names must not be empty" }
     }
 
     private val logger = LoggerFactory.getLogger(javaClass)
+    private val dynDnsClients: Map<String, DynDnsClient> =
+        config.mapValues { (_, clientConfig) -> DynDnsClient(clientConfig) }
 
-    private val dnsRecordClients: Map<String, DnsRecordClient> =
-        config.mapValues { (_, dynDnsClientConfig) ->
-            when (dynDnsClientConfig) {
-                is CloudflareDnsRecordClient.Config -> CloudflareDnsRecordClient(dynDnsClientConfig)
-            }
-        }
+    override fun close() {
+        dynDnsClients.asSequence().filterIsInstance<AutoCloseable>().forEach { it.close() }
+    }
 
     suspend fun update(domainName: String, ipv4Addr: String?, ipv6Addr: String?) {
         logger
@@ -39,43 +35,25 @@ class DynDnsService(config: DynDnsServiceConfig) {
         }
         val (zoneName, recordName, dynDnsClient) = parsedDomainName
 
-        val updateRequests =
-            listOfNotNull(
-                ipv4Addr
-                    ?.takeUnless { it.isEmpty() }
-                    ?.let {
-                        UpdateDnsRecordRequest.A(
-                            recordName = recordName,
-                            zoneName = zoneName,
-                            content = it,
-                        )
-                    },
-                ipv6Addr
-                    ?.takeUnless { it.isEmpty() }
-                    ?.let {
-                        UpdateDnsRecordRequest.AAAA(
-                            recordName = recordName,
-                            zoneName = zoneName,
-                            content = it,
-                        )
-                    },
+        val request =
+            UpdateDnsRecordRequest(
+                zoneName = zoneName,
+                recordName = recordName,
+                ipv4Address = ipv4Addr?.takeUnless { it.isEmpty() },
+                ipv6Address = ipv6Addr?.takeUnless { it.isEmpty() },
             )
-        if (updateRequests.isEmpty()) {
-            throw BadRequestException("At least one non-empty IP addresses must be given.")
-        }
-
-        dynDnsClient.updateDnsRecords(updateRequests)
+        dynDnsClient.update(request)
     }
 
     private fun parseDomainName(domainName: String): ParsedDomainName? {
-        for ((zoneName, dynDnsClient) in dnsRecordClients) {
+        for ((zoneName, dynDnsClient) in dynDnsClients) {
             val domainNameSuffix = ".$zoneName"
             if (domainName.endsWith(domainNameSuffix)) {
                 val recordName = domainName.removeSuffix(domainNameSuffix)
                 return ParsedDomainName(
                     zoneName = zoneName,
                     recordName = recordName,
-                    dnsRecordClient = dynDnsClient,
+                    dynDnsClient = dynDnsClient,
                 )
             }
         }
@@ -85,6 +63,6 @@ class DynDnsService(config: DynDnsServiceConfig) {
     private data class ParsedDomainName(
         val zoneName: String,
         val recordName: String,
-        val dnsRecordClient: DnsRecordClient,
+        val dynDnsClient: DynDnsClient,
     )
 }

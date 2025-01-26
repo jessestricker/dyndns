@@ -1,4 +1,4 @@
-package dev.jestr.dyndns.client.cloudflare
+package dev.jestr.dyndns.client
 
 import io.ktor.client.HttpClient
 import io.ktor.client.call.body
@@ -10,6 +10,7 @@ import io.ktor.client.request.get
 import io.ktor.client.request.header
 import io.ktor.client.request.post
 import io.ktor.client.request.setBody
+import io.ktor.client.statement.HttpResponse
 import io.ktor.http.ContentType
 import io.ktor.http.HttpHeaders
 import io.ktor.http.auth.AuthScheme
@@ -29,9 +30,22 @@ import org.slf4j.LoggerFactory
 private const val BASE_URL = "https://api.cloudflare.com/client/v4/"
 private const val DEFAULT_PAGE_SIZE = 5_000_000
 
-class CloudflareClient(apiKey: String, httpClientEngine: HttpClientEngineFactory<*> = CIO) :
-    AutoCloseable {
+internal class CloudflareClient(
+    apiKey: String,
+    httpClientEngine: HttpClientEngineFactory<*> = CIO,
+) : AutoCloseable {
     private val logger = LoggerFactory.getLogger(javaClass)
+
+    @OptIn(ExperimentalSerializationApi::class)
+    private val json = Json {
+        ignoreUnknownKeys = true
+        namingStrategy = JsonNamingStrategy.Builtins.KebabCase
+        serializersModule +
+            SerializersModule {
+                polymorphicDefaultDeserializer(Record::class) { UnknownRecord.serializer() }
+            }
+    }
+
     private val httpClient =
         HttpClient(httpClientEngine) {
             expectSuccess = true
@@ -40,20 +54,7 @@ class CloudflareClient(apiKey: String, httpClientEngine: HttpClientEngineFactory
                 header(HttpHeaders.Authorization, HttpAuthHeader.Single(AuthScheme.Bearer, apiKey))
                 contentType(ContentType.Application.Json)
             }
-            install(ContentNegotiation) {
-                json(
-                    @OptIn(ExperimentalSerializationApi::class)
-                    Json {
-                        ignoreUnknownKeys = true
-                        namingStrategy = JsonNamingStrategy.KebabCase
-                        serializersModule += SerializersModule {
-                            polymorphicDefaultDeserializer(Record::class) {
-                                UnknownRecord.serializer()
-                            }
-                        }
-                    }
-                )
-            }
+            install(ContentNegotiation) { json(json) }
         }
 
     override fun close() {
@@ -62,25 +63,23 @@ class CloudflareClient(apiKey: String, httpClientEngine: HttpClientEngineFactory
 
     @Serializable data class ListDnsRecordsRequest(val perPage: Int = DEFAULT_PAGE_SIZE)
 
-    @Serializable data class ListDnsRecordsResponse(val result: List<Record>)
-
     suspend fun listDnsRecords(
         zoneId: String,
         request: ListDnsRecordsRequest = ListDnsRecordsRequest(),
-    ): ListDnsRecordsResponse {
+    ): List<Record> {
         logger
             .atDebug()
             .addKeyValue("zoneId", zoneId)
             .addKeyValue("request", request)
             .log("listDnsRecords")
 
-        val response: ListDnsRecordsResponse =
+        val response: List<Record> =
             httpClient
                 .get {
                     url { path("zones", zoneId, "dns_records") }
                     setBody(request)
                 }
-                .body()
+                .bodyUnwrapped()
 
         logger.atDebug().addKeyValue("response", response).log("listDnsRecords")
 
@@ -115,7 +114,7 @@ class CloudflareClient(apiKey: String, httpClientEngine: HttpClientEngineFactory
                     url { path("zones", zoneId, "dns_records", "batch") }
                     setBody(request)
                 }
-                .body()
+                .bodyUnwrapped()
 
         logger.atDebug().addKeyValue("response", response).log("batchDnsRecords")
 
@@ -143,4 +142,9 @@ class CloudflareClient(apiKey: String, httpClientEngine: HttpClientEngineFactory
     data class AAAARecord(val id: String, val name: String, val content: String) : Record
 
     @Serializable data class UnknownRecord(val type: String) : Record
+
+    @Serializable private data class ResponseWrapper<T>(val result: T)
+
+    private suspend inline fun <reified T> HttpResponse.bodyUnwrapped(): T =
+        body<ResponseWrapper<T>>().result
 }
