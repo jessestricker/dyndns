@@ -4,7 +4,7 @@ plugins {
     application
 }
 
-version = "0.2.0"
+version = rootProject.version
 
 repositories { //
     mavenCentral()
