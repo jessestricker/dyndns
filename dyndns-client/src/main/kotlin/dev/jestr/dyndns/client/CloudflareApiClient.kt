@@ -92,8 +92,8 @@ internal class CloudflareApiClient(apiToken: String) : AutoCloseable {
 
     @Serializable
     data class BatchDnsRecordsResponse(
-        val posts: List<Record> = emptyList(),
-        val patches: List<Record> = emptyList(),
+        val posts: List<Record>? = emptyList(),
+        val patches: List<Record>? = emptyList(),
     )
 
     suspend fun batchDnsRecords(
