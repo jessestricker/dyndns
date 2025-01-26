@@ -2,6 +2,7 @@ package dev.jestr.dyndns.server
 
 import dev.jestr.dyndns.client.DynDnsClient
 import dev.jestr.dyndns.client.UpdateDynDnsRequest
+import io.ktor.server.plugins.BadRequestException
 import io.ktor.server.plugins.NotFoundException
 import org.slf4j.LoggerFactory
 
@@ -21,13 +22,19 @@ class DynDnsService(config: DynDnsServiceConfig) : AutoCloseable {
         dynDnsClients.asSequence().filterIsInstance<AutoCloseable>().forEach { it.close() }
     }
 
-    suspend fun update(domainName: String, ipv4Addr: String?, ipv6Addr: String?) {
+    suspend fun update(domainName: String, ipv4Address: String?, ipv6Address: String?) {
         logger
             .atDebug()
             .addKeyValue("domainName", domainName)
-            .addKeyValue("ipv4Addr", ipv4Addr)
-            .addKeyValue("ipv6Addr", ipv6Addr)
+            .addKeyValue("ipv4Address", ipv4Address)
+            .addKeyValue("ipv6Address", ipv6Address)
             .log("update")
+
+        val ipv4Address = ipv4Address?.takeUnless { it.isEmpty() }
+        val ipv6Address = ipv6Address?.takeUnless { it.isEmpty() }
+        if (ipv4Address == null && ipv6Address == null) {
+            throw BadRequestException("No IP address given.")
+        }
 
         val parsedDomainName = parseDomainName(domainName)
         if (parsedDomainName == null) {
@@ -35,14 +42,14 @@ class DynDnsService(config: DynDnsServiceConfig) : AutoCloseable {
         }
         val (zoneName, recordName, dynDnsClient) = parsedDomainName
 
-        val request =
+        dynDnsClient.update(
             UpdateDynDnsRequest(
                 zoneName = zoneName,
                 recordName = recordName,
-                ipv4Address = ipv4Addr?.takeUnless { it.isEmpty() },
-                ipv6Address = ipv6Addr?.takeUnless { it.isEmpty() },
+                ipv4Address = ipv4Address,
+                ipv6Address = ipv6Address,
             )
-        dynDnsClient.update(request)
+        )
     }
 
     private fun parseDomainName(domainName: String): ParsedDomainName? {

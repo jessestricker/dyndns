@@ -9,6 +9,9 @@ import io.ktor.server.auth.basic
 import io.ktor.server.cio.CIO
 import io.ktor.server.engine.addShutdownHook
 import io.ktor.server.engine.embeddedServer
+import io.ktor.server.plugins.BadRequestException
+import io.ktor.server.plugins.NotFoundException
+import io.ktor.server.response.respondText
 import io.ktor.server.routing.get
 import io.ktor.server.routing.routing
 import kotlin.io.path.Path
@@ -40,9 +43,15 @@ fun Application.module(authService: AuthService, dynDnsService: DynDnsService) {
                 val domainName = call.pathParameters["domainName"]!!
                 val ipv4Addr = call.queryParameters["ipv4Addr"]
                 val ipv6Addr = call.queryParameters["ipv6Addr"]
-                dynDnsService.update(domainName, ipv4Addr, ipv6Addr)
 
-                call.response.status(HttpStatusCode.OK)
+                try {
+                    dynDnsService.update(domainName, ipv4Addr, ipv6Addr)
+                    call.respondText("OK")
+                } catch (e: BadRequestException) {
+                    call.respondText(e.message.toString(), status = HttpStatusCode.BadRequest)
+                } catch (e: NotFoundException) {
+                    call.respondText(e.message.toString(), status = HttpStatusCode.NotFound)
+                }
             }
         }
     }
