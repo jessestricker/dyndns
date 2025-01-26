@@ -2,7 +2,6 @@ package dev.jestr.dyndns.client
 
 import io.ktor.client.HttpClient
 import io.ktor.client.call.body
-import io.ktor.client.engine.HttpClientEngineFactory
 import io.ktor.client.engine.cio.CIO
 import io.ktor.client.plugins.DefaultRequest
 import io.ktor.client.plugins.contentnegotiation.ContentNegotiation
@@ -30,10 +29,7 @@ import org.slf4j.LoggerFactory
 private const val BASE_URL = "https://api.cloudflare.com/client/v4/"
 private const val DEFAULT_PAGE_SIZE = 5_000_000
 
-internal class CloudflareClient(
-    apiKey: String,
-    httpClientEngine: HttpClientEngineFactory<*> = CIO,
-) : AutoCloseable {
+internal class CloudflareApiClient(apiToken: String) : AutoCloseable {
     private val logger = LoggerFactory.getLogger(javaClass)
 
     @OptIn(ExperimentalSerializationApi::class)
@@ -47,11 +43,14 @@ internal class CloudflareClient(
     }
 
     private val httpClient =
-        HttpClient(httpClientEngine) {
+        HttpClient(CIO) {
             expectSuccess = true
             install(DefaultRequest) {
                 url(BASE_URL)
-                header(HttpHeaders.Authorization, HttpAuthHeader.Single(AuthScheme.Bearer, apiKey))
+                header(
+                    HttpHeaders.Authorization,
+                    HttpAuthHeader.Single(AuthScheme.Bearer, apiToken),
+                )
                 contentType(ContentType.Application.Json)
             }
             install(ContentNegotiation) { json(json) }

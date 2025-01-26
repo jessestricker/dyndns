@@ -1,7 +1,7 @@
 package dev.jestr.dyndns.server
 
 import dev.jestr.dyndns.client.DynDnsClient
-import dev.jestr.dyndns.client.UpdateDnsRecordRequest
+import dev.jestr.dyndns.client.UpdateDynDnsRequest
 import io.ktor.server.plugins.NotFoundException
 import org.slf4j.LoggerFactory
 
@@ -15,7 +15,7 @@ class DynDnsService(config: DynDnsServiceConfig) : AutoCloseable {
 
     private val logger = LoggerFactory.getLogger(javaClass)
     private val dynDnsClients: Map<String, DynDnsClient> =
-        config.mapValues { (_, clientConfig) -> DynDnsClient(clientConfig) }
+        config.mapValues { (_, clientConfig) -> DynDnsClient.fromConfig(clientConfig) }
 
     override fun close() {
         dynDnsClients.asSequence().filterIsInstance<AutoCloseable>().forEach { it.close() }
@@ -36,7 +36,7 @@ class DynDnsService(config: DynDnsServiceConfig) : AutoCloseable {
         val (zoneName, recordName, dynDnsClient) = parsedDomainName
 
         val request =
-            UpdateDnsRecordRequest(
+            UpdateDynDnsRequest(
                 zoneName = zoneName,
                 recordName = recordName,
                 ipv4Address = ipv4Addr?.takeUnless { it.isEmpty() },

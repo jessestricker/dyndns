@@ -1,6 +1,6 @@
 package dev.jestr.dyndns.client
 
-data class UpdateDnsRecordRequest(
+data class UpdateDynDnsRequest(
     val zoneName: String,
     val recordName: String,
     val ipv4Address: String?,

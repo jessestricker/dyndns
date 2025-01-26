@@ -1,12 +1,12 @@
 package dev.jestr.dyndns.client
 
-import dev.jestr.dyndns.client.CloudflareClient.AAAARecord
-import dev.jestr.dyndns.client.CloudflareClient.ARecord
-import dev.jestr.dyndns.client.CloudflareClient.BatchDnsRecordsRequest
-import dev.jestr.dyndns.client.CloudflareClient.NewAAAARecord
-import dev.jestr.dyndns.client.CloudflareClient.NewARecord
-import dev.jestr.dyndns.client.CloudflareClient.NewRecord
-import dev.jestr.dyndns.client.CloudflareClient.Record
+import dev.jestr.dyndns.client.CloudflareApiClient.AAAARecord
+import dev.jestr.dyndns.client.CloudflareApiClient.ARecord
+import dev.jestr.dyndns.client.CloudflareApiClient.BatchDnsRecordsRequest
+import dev.jestr.dyndns.client.CloudflareApiClient.NewAAAARecord
+import dev.jestr.dyndns.client.CloudflareApiClient.NewARecord
+import dev.jestr.dyndns.client.CloudflareApiClient.NewRecord
+import dev.jestr.dyndns.client.CloudflareApiClient.Record
 import kotlinx.serialization.SerialName
 import kotlinx.serialization.Serializable
 import org.slf4j.LoggerFactory
@@ -17,13 +17,13 @@ class CloudflareDynDnsClient(private val config: Config) : DynDnsClient, AutoClo
     data class Config(val zoneId: String, val apiToken: String) : DynDnsClient.Config
 
     private val logger = LoggerFactory.getLogger(javaClass)
-    private val apiClient = CloudflareClient(config.apiToken)
+    private val apiClient = CloudflareApiClient(config.apiToken)
 
     override fun close() {
         apiClient.close()
     }
 
-    override suspend fun update(request: UpdateDnsRecordRequest) {
+    override suspend fun update(request: UpdateDynDnsRequest) {
         logger.atInfo().addKeyValue("request", request).log("update")
 
         val existingRecords = apiClient.listDnsRecords(config.zoneId)
