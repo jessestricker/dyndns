@@ -1,0 +1,9 @@
+port: 8080
+auth:
+  username: "username" # TODO: replace username
+  password: "password" # TODO: replace password
+zones:
+#  "example.org": # TODO: add zones
+#    type: cloudflare
+#    zoneId: "zoneId"
+#    apiToken: "apiToken"

@@ -1,0 +1,40 @@
+plugins {
+    alias(libs.plugins.kotlin.jvm)
+    alias(libs.plugins.kotlin.plugin.serialization)
+    alias(libs.plugins.ktor)
+}
+
+version = "0.1.0"
+
+repositories { //
+    mavenCentral()
+}
+
+dependencies {
+    implementation(libs.ktor.server.core)
+    implementation(libs.ktor.server.cio)
+    implementation(libs.ktor.server.auth)
+    implementation(libs.kaml)
+    runtimeOnly(libs.logback.classic)
+
+    implementation(project(":dyndns-client"))
+}
+
+kotlin { //
+    jvmToolchain { //
+        languageVersion = libs.versions.java.map { JavaLanguageVersion.of(it) }
+    }
+}
+
+application { //
+    mainClass = "dev.jestr.dyndns.server.ApplicationKt"
+}
+
+distributions.configureEach {
+    contents {
+        from("contrib") {
+            into("etc")
+            expand("version" to project.version)
+        }
+    }
+}

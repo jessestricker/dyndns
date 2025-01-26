@@ -1,0 +1,9 @@
+[Unit]
+Description=Simple DynDNS sever (v${version})
+
+[Service]
+ExecStart=/opt/dyndns-server-${version}/bin/dyndns-server
+Environment=DYNDNS_CONFIG=/opt/dyndns-server-${version}/etc/config.yml
+
+[Install]
+WantedBy=multi-user.target
