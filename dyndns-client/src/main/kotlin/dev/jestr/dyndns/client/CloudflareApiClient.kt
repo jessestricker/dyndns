@@ -36,10 +36,9 @@ internal class CloudflareApiClient(apiToken: String) : AutoCloseable {
     private val json = Json {
         ignoreUnknownKeys = true
         namingStrategy = JsonNamingStrategy.Builtins.KebabCase
-        serializersModule +
-            SerializersModule {
-                polymorphicDefaultDeserializer(Record::class) { UnknownRecord.serializer() }
-            }
+        serializersModule += SerializersModule {
+            polymorphicDefaultDeserializer(Record::class) { UnknownRecord.serializer() }
+        }
     }
 
     private val httpClient =
