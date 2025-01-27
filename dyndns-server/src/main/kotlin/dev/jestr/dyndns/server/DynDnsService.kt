@@ -4,7 +4,6 @@ import dev.jestr.dyndns.client.DynDnsClient
 import dev.jestr.dyndns.client.UpdateDynDnsRequest
 import io.ktor.server.plugins.BadRequestException
 import io.ktor.server.plugins.NotFoundException
-import org.slf4j.LoggerFactory
 
 typealias DynDnsServiceConfig = Map<String, DynDnsClient.Config>
 
@@ -14,7 +13,6 @@ class DynDnsService(config: DynDnsServiceConfig) : AutoCloseable {
         require(config.keys.all { it.isNotEmpty() }) { "zone names must not be empty" }
     }
 
-    private val logger = LoggerFactory.getLogger(javaClass)
     private val dynDnsClients: Map<String, DynDnsClient> =
         config.mapValues { (_, clientConfig) -> DynDnsClient.fromConfig(clientConfig) }
 
@@ -23,13 +21,6 @@ class DynDnsService(config: DynDnsServiceConfig) : AutoCloseable {
     }
 
     suspend fun update(domainName: String, ipv4Address: String?, ipv6Address: String?) {
-        logger
-            .atDebug()
-            .addKeyValue("domainName", domainName)
-            .addKeyValue("ipv4Address", ipv4Address)
-            .addKeyValue("ipv6Address", ipv6Address)
-            .log("update")
-
         val ipv4Address = ipv4Address?.takeUnless { it.isEmpty() }
         val ipv6Address = ipv6Address?.takeUnless { it.isEmpty() }
         if (ipv4Address == null && ipv6Address == null) {

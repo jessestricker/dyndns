@@ -24,13 +24,18 @@ class CloudflareDynDnsClient(private val config: Config) : DynDnsClient, AutoClo
     }
 
     override suspend fun update(request: UpdateDynDnsRequest) {
-        logger.atInfo().addKeyValue("request", request).log("update")
+        val domainName = request.recordName + "." + request.zoneName
+        logger.info(
+            "domain '{}': update IPv4 to '{}' and IPv6 to '{}'",
+            domainName,
+            request.ipv4Address,
+            request.ipv6Address,
+        )
 
         val existingRecords = apiClient.listDnsRecords(config.zoneId)
 
         val recordsToCreate = mutableListOf<NewRecord>()
         val recordsToUpdate = mutableListOf<Record>()
-        val domainName = request.recordName + "." + request.zoneName
 
         if (request.ipv4Address != null) {
             val existingRecord = existingRecords.findARecordByName(domainName)
@@ -55,8 +60,15 @@ class CloudflareDynDnsClient(private val config: Config) : DynDnsClient, AutoClo
         }
 
         if (recordsToCreate.isEmpty() && recordsToUpdate.isEmpty()) {
-            logger.atInfo().log("records up-to-date")
+            logger.info("domain '{}': already up-to-date", domainName)
             return
+        } else {
+            logger.info(
+                "domain '{}': creating {} and updating {}",
+                domainName,
+                recordsToCreate,
+                recordsToUpdate,
+            )
         }
 
         apiClient.batchDnsRecords(
