@@ -1,3 +1,7 @@
 rootProject.name = "dyndns"
 
-include("dyndns-client", "dyndns-server")
+include(
+    "cloudflare-api-client",
+    "dyndns-client",
+    "dyndns-server",
+)
