@@ -1,0 +1,6 @@
+server:
+  port: 12345
+dyndns:
+  example.org:
+    !<cloudflare>
+    apiToken: my_secret_api_token

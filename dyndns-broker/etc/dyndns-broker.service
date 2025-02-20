@@ -1,0 +1,12 @@
+[Unit]
+Description=Dynamic DNS Broker
+Wants=network.target
+After=network.target
+
+[Service]
+ExecStart=/opt/dyndns-broker/bin/dyndns-broker
+Environment=DYNDNS_BROKER_CONFIG=/opt/dyndns-broker/etc/config.yml
+User=dyndns-broker
+
+[Install]
+WantedBy=multi-user.target
