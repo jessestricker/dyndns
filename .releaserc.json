@@ -1,0 +1,13 @@
+{
+  "plugins": [
+    "@semantic-release/commit-analyzer",
+    "@semantic-release/release-notes-generator",
+    [
+      "@semantic-release/exec",
+      {
+        "prepareCmd": "./gradlew build -Pversion=${nextRelease.version}"
+      }
+    ],
+    "@semantic-release/github"
+  ]
+}
