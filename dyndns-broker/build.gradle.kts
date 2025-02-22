@@ -32,7 +32,9 @@ application {
 distributions.main {
     contents {
         into("etc") {
-            from("etc/config.yml")
+            from("etc/config.yml") {
+                filePermissions { unix("rw-------") }
+            }
             from("etc/dyndns-broker.service")
         }
     }
