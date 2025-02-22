@@ -16,6 +16,10 @@ dependencies {
 }
 
 kotlin {
+    compilerOptions {
+        extraWarnings = true
+        progressiveMode = true
+    }
     jvmToolchain {
         languageVersion = libs.versions.java.map { JavaLanguageVersion.of(it) }
     }
