@@ -11,31 +11,32 @@ import io.ktor.server.routing.*
 import io.ktor.server.util.*
 import kotlin.io.path.Path
 
+private const val CALL_ID_LENGTH = 16
+private const val CALL_ID_DICTIONARY = "abcdefghijklmnopqrstuvwxyz0123456789"
+
 fun main() {
     val configFilePath = Path(environmentVariable("DYNDNS_BROKER_CONFIG"))
     val configService = ConfigService(configFilePath)
-    val dynDnsService = DynDnsService.fromConfig(configService.config.dyndns)
+    val config = configService.config
 
-    val server = embeddedServer(CIO, port = configService.config.server.port) {
-        module(dynDnsService)
-    }
+    val dynDnsService = DynDnsService.fromConfig(config.dyndns)
+
+    val server =
+        embeddedServer(CIO, port = config.server.port) {
+            install(CallId) { generate(CALL_ID_LENGTH, CALL_ID_DICTIONARY) }
+            install(CallLogging) { callIdMdc("callId") }
+            setupRouting(dynDnsService)
+        }
     server.start(wait = true)
 }
 
-private fun Application.module(dynDnsService: DynDnsService) {
-    install(CallId) {
-        generate(16, "abcdefghijklmnopqrstuvwxyz0123456789")
-    }
-    install(CallLogging) {
-        callIdMdc("callId")
-    }
-
+private fun Application.setupRouting(dynDnsService: DynDnsService) {
     routing {
         get("/update/{zoneName}/{recordName}") {
             val zoneName = call.pathParameters.getOrFail("zoneName")
             val recordName = call.pathParameters.getOrFail("recordName")
-            val ipv4Addresses = call.queryParameters.getAll("ipv4").orEmpty().filter { it.isNotBlank() }.toSet()
-            val ipv6Addresses = call.queryParameters.getAll("ipv6").orEmpty().filter { it.isNotBlank() }.toSet()
+            val ipv4Addresses = call.queryParameters.getAll("ipv4").filterIpAddresses()
+            val ipv6Addresses = call.queryParameters.getAll("ipv6").filterIpAddresses()
 
             val domainName = "$recordName.$zoneName"
 
@@ -51,6 +52,8 @@ private fun Application.module(dynDnsService: DynDnsService) {
     }
 }
 
-private fun environmentVariable(name: String): String {
-    return System.getenv(name) ?: error("""environment variable "$name" undefined""")
-}
+private fun List<String>?.filterIpAddresses(): Set<String> =
+    orEmpty().filter { it.isNotBlank() }.toSet()
+
+private fun environmentVariable(name: String): String =
+    System.getenv(name) ?: error("""environment variable "$name" undefined""")

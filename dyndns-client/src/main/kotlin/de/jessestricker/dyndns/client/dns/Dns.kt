@@ -1,9 +1,6 @@
 package de.jessestricker.dyndns.client.dns
 
-data class Zone(
-    val id: String,
-    val name: String,
-)
+data class Zone(val id: String, val name: String)
 
 sealed interface Record {
     val id: String
@@ -28,12 +25,6 @@ sealed interface NewRecord {
     val content: String
 }
 
-data class NewARecord(
-    override val name: String,
-    override val content: String,
-) : NewRecord
+data class NewARecord(override val name: String, override val content: String) : NewRecord
 
-data class NewAAAARecord(
-    override val name: String,
-    override val content: String,
-) : NewRecord
+data class NewAAAARecord(override val name: String, override val content: String) : NewRecord

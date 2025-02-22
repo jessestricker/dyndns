@@ -1,6 +1,7 @@
 plugins {
     alias(libs.plugins.kotlin.jvm)
     alias(libs.plugins.kotlin.plugin.serialization)
+    alias(libs.plugins.spotless)
 }
 
 dependencies {
@@ -14,5 +15,11 @@ dependencies {
 kotlin {
     jvmToolchain {
         languageVersion = libs.versions.java.map { JavaLanguageVersion.of(it) }
+    }
+}
+
+spotless {
+    kotlin {
+        ktfmt(libs.versions.ktfmt.get()).kotlinlangStyle()
     }
 }

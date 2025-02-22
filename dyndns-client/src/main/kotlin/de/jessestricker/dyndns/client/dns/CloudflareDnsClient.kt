@@ -12,15 +12,13 @@ import kotlinx.serialization.SerialName
 import kotlinx.serialization.Serializable
 import kotlinx.serialization.json.Json
 
-class CloudflareDnsClient(
-    private val apiToken: String,
-) : DnsClient {
+class CloudflareDnsClient(private val apiToken: String) : DnsClient {
     @Serializable
     @SerialName("cloudflare")
     data class Config(val apiToken: String) : DnsClient.Config
 
     companion object {
-        fun fromConfig(config: Config) =
+        fun fromConfig(config: Config): CloudflareDnsClient =
             CloudflareDnsClient(apiToken = config.apiToken)
     }
 
@@ -31,59 +29,51 @@ class CloudflareDnsClient(
             bearerAuth(apiToken)
             contentType(ContentType.Application.Json)
         }
-        install(ContentNegotiation) {
-            json(Json {
-                ignoreUnknownKeys = true
-            })
-        }
+        install(ContentNegotiation) { json(Json { ignoreUnknownKeys = true }) }
     }
 
-    override suspend fun getZone(name: String): Zone {
-        val response = httpClient
+    override suspend fun getZone(name: String): Zone =
+        httpClient
             .get {
                 pathSegments("zones")
                 parameter("name", name)
             }
             .body<CfListResponse<CfZone>>()
-        return response.result
-            .single().toZone()
-    }
+            .result
+            .single()
+            .toZone()
 
-    override suspend fun getRecords(zone: Zone, name: String): List<Record> {
-        val response = httpClient
+    override suspend fun getRecords(zone: Zone, name: String): List<Record> =
+        httpClient
             .get {
                 pathSegments("zones", zone.id, "dns_records")
                 parameter("name", name)
             }
             .body<CfListResponse<CfRecord>>()
-        return response.result
-            .mapNotNull { it.toRecord() }
-    }
+            .result
+            .mapNotNull { it.toRecordOrNull() }
 
-    override suspend fun updateRecords(zone: Zone, toDelete: List<Record>, toCreate: List<NewRecord>) {
-        val request = CfBatchRecordsRequest(
-            deletes = toDelete.map { it.toCfBatchRecordsDelete() },
-            posts = toCreate.map { it.toCfBatchRecordsPost() },
-        )
+    override suspend fun updateRecords(
+        zone: Zone,
+        toDelete: List<Record>,
+        toCreate: List<NewRecord>,
+    ) {
+        val request =
+            CfBatchRecordsRequest(
+                deletes = toDelete.map { it.toCfBatchRecordsDelete() },
+                posts = toCreate.map { it.toCfBatchRecordsPost() },
+            )
         httpClient.post {
             pathSegments("zones", zone.id, "dns_records", "batch")
             setBody(request)
         }
     }
 
-    @Serializable
-    private data class CfListResponse<T>(
-        val result: List<T>,
-    )
+    @Serializable private data class CfListResponse<T>(val result: List<T>)
 
-    @Serializable
-    private data class CfZone(
-        val id: String,
-        val name: String,
-    )
+    @Serializable private data class CfZone(val id: String, val name: String)
 
-    private fun CfZone.toZone() =
-        Zone(id = id, name = name)
+    private fun CfZone.toZone(): Zone = Zone(id = id, name = name)
 
     @Serializable
     private data class CfRecord(
@@ -93,7 +83,7 @@ class CloudflareDnsClient(
         val content: String,
     )
 
-    private fun CfRecord.toRecord() =
+    private fun CfRecord.toRecordOrNull(): Record? =
         when (type) {
             "A" -> ARecord(id = id, name = name, content = content)
             "AAAA" -> AAAARecord(id = id, name = name, content = content)
@@ -106,27 +96,21 @@ class CloudflareDnsClient(
         val posts: List<CfBatchRecordsPost>,
     )
 
-    @Serializable
-    private data class CfBatchRecordsDelete(
-        val id: String
-    )
+    @Serializable private data class CfBatchRecordsDelete(val id: String)
 
-    private fun Record.toCfBatchRecordsDelete() =
+    private fun Record.toCfBatchRecordsDelete(): CfBatchRecordsDelete =
         CfBatchRecordsDelete(id = id)
 
     @Serializable
-    private data class CfBatchRecordsPost(
-        val type: String,
-        val name: String,
-        val content: String,
-    )
+    private data class CfBatchRecordsPost(val type: String, val name: String, val content: String)
 
-    private fun NewRecord.toCfBatchRecordsPost() =
+    private fun NewRecord.toCfBatchRecordsPost(): CfBatchRecordsPost =
         CfBatchRecordsPost(type = type, name = name, content = content)
 }
 
-private val NewRecord.type
-    get() = when (this) {
-        is NewARecord -> "A"
-        is NewAAAARecord -> "AAAA"
-    }
+private val NewRecord.type: String
+    get() =
+        when (this) {
+            is NewARecord -> "A"
+            is NewAAAARecord -> "AAAA"
+        }

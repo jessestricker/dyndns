@@ -1,6 +1,7 @@
 plugins {
     alias(libs.plugins.kotlin.jvm)
     alias(libs.plugins.kotlin.plugin.serialization)
+    alias(libs.plugins.spotless)
     application
 }
 
@@ -30,5 +31,11 @@ distributions.main {
             from("etc/config.yml")
             from("etc/dyndns-broker.service")
         }
+    }
+}
+
+spotless {
+    kotlin {
+        ktfmt(libs.versions.ktfmt.get()).kotlinlangStyle()
     }
 }

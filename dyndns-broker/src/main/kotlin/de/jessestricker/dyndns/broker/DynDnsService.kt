@@ -5,9 +5,7 @@ import de.jessestricker.dyndns.client.dns.DnsClient
 
 typealias DynDnsServiceConfig = Map<String, DnsClient.Config>
 
-class DynDnsService(
-    private val dynDnsClients: Map<String, DynDnsClient>,
-) {
+class DynDnsService(private val dynDnsClients: Map<String, DynDnsClient>) {
     suspend fun update(
         zoneName: String,
         domainName: String,
@@ -20,10 +18,8 @@ class DynDnsService(
 
     companion object {
         fun fromConfig(zones: DynDnsServiceConfig): DynDnsService {
-            val dynDnsClients = zones.mapValues { (_, config) ->
-                val dnsClient = DnsClient.fromConfig(config)
-                DynDnsClient(dnsClient)
-            }
+            val dynDnsClients =
+                zones.mapValues { (_, config) -> DynDnsClient(DnsClient.fromConfig(config)) }
             return DynDnsService(dynDnsClients)
         }
     }
