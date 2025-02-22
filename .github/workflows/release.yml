@@ -3,8 +3,12 @@ on:
   push:
     branches: [ main ]
 jobs:
+  checks:
+    name: Checks
+    uses: ./checks.yml
   release:
     name: Release
+    needs: [ checks ]
     runs-on: ubuntu-24.04
     permissions:
       contents: write
