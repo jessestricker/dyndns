@@ -1,0 +1,45 @@
+name: Upgrade Gradle Wrapper
+on:
+  schedule:
+    - cron: "0 9 * * mon" # at 09:00 UTC, every monday
+  workflow_dispatch:
+jobs:
+  upgrade-gradle-wrapper:
+    name: Upgrade Gradle Wrapper
+    permissions:
+      contents: write
+      pull-requests: write
+    runs-on: ubuntu-24.04
+    steps:
+      - name: Checkout
+        uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
+      - name: Setup Java
+        uses: actions/setup-java@3a4f6e1af504cf6a31855fa899c6aa5355ba6c12 # v4.7.0
+        with:
+          java-version: 23
+          distribution: temurin
+      - name: Setup Gradle
+        uses: gradle/actions/setup-gradle@94baf225fe0a508e581a564467443d0e2379123b # v4.3.0
+        with:
+          cache-encryption-key: ${{ secrets.GRADLE_ENCRYPTION_KEY }}
+          add-job-summary: never
+      - name: Get latest Gradle version
+        run: |
+          latest_version_json=$(curl --silent 'https://services.gradle.org/versions/current')
+          latest_version=$(jq --raw-output '.version' <<<"${latest_version_json}")
+          echo "latest_version=${latest_version}" >>"${GITHUB_ENV}"
+      - name: Upgrade Gradle Wrapper
+        run: |
+          ./gradlew wrapper --gradle-version="${latest_version}"
+          ./gradlew wrapper --gradle-version="${latest_version}"
+      - name: Create Pull Request
+        uses: peter-evans/create-pull-request@67ccf781d68cd99b580ae25a5c18a1cc84ffff1f # v7.0.6
+        with:
+          commit-message: >
+            chore(deps): bump Gradle Wrapper to ${{ env.latest_version }}
+          branch: "chore/upgrade-gradle-wrapper-${{ env.latest_version }}"
+          title: >
+            chore(deps): bump Gradle Wrapper to ${{ env.latest_version }}
+          labels: dependencies,gradle
+          body: |
+            Bumps the Gradle Wrapper to [${{ env.latest_version }}](https://docs.gradle.org/${{ env.latest_version }}/release-notes.html).
