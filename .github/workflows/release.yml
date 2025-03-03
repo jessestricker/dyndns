@@ -2,6 +2,9 @@ name: Release
 on:
   push:
     branches: [ main ]
+concurrency:
+  group: ${{ github.workflow }}
+  cancel-in-progress: false
 jobs:
   checks:
     name: Checks
